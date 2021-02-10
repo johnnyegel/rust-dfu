@@ -1,0 +1,13 @@
+[package]
+name = "rdfu"
+description = "A tool to upload firmware via the DFU protocol. Supports almost any input format."
+version = "0.1.0"
+authors = ["Johnny Egeland <johnnyege@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.38"
+rusb = "0.7.0"
+clap = "~2.33.3"
