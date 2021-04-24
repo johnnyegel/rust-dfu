@@ -1,14 +1,16 @@
 mod util;
 
-use std::{any::Any, path::Path};
+mod usb;
+
+use std::{path::Path};
 use std::ffi::OsStr;
 use clap::{Arg, App};
 
 use util::{parse, UnwrapOrDie};
 
-/**
- * Enumeration defining the supported image formats
- */
+
+
+/// Enumeration defining the supported image formats
 #[derive(Debug)]
 enum ImageFormat {
     Elf(Option<usize>),
@@ -95,8 +97,12 @@ fn main() {
         let interfaces = active_config.interfaces();
         let mut is_device_listed = false;
 
-        for interface in interfaces.into_iter() {
-            for if_desc in interface.descriptors().into_iter() {
+        // Create a mutable vector to store our string indices
+        let mut string_ix_list: Vec<u8> = Vec::new();
+
+        // Iterate the interfaces, and grab
+        for interface in interfaces {
+            for if_desc in interface.descriptors() {
                 // Skip interfaces which are not DFU
                 if if_desc.class_code() != 0xFE || if_desc.sub_class_code() != 0x01 { 
                     continue; 
@@ -119,6 +125,8 @@ fn main() {
 
                 let string_index = if_desc.description_string_index().unwrap_or(0xFF);
 
+                string_ix_list.push(string_index);
+
                 // Display interface info
                 println!(" - Interface [{}]: Class: {:02X}:{:02X}, Protocol: {:02X}, String: {:02X}",
                     interface.number(),
@@ -127,11 +135,23 @@ fn main() {
                     if_desc.protocol_code(),
                     string_index
                 );
-
-
             }
         }
 
+        // If device was listed, we need to read strings
+        let dev_desc_result = device.open();
+        if let Err(e) = dev_desc_result {
+            println!("Unable to open USB device: {}", e);
+            continue;
+        }
+        
+        let dev_desc = dev_desc_result.unwrap();
+
+        //dev_desc.read_interface_string(, interface, timeout)
+
+
+
+        //dev_desc.close();
     }
 
 
@@ -144,7 +164,7 @@ fn main() {
 /// 
 /// # Return
 /// The file extension in lower case, or the given default string (also in lower case)
-fn get_file_extension(filename: &String, default: &str) -> String {
+fn get_file_extension(filename: &str, default: &str) -> String {
     Path::new(filename)
         .extension()
         .and_then(OsStr::to_str)

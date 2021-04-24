@@ -1,5 +1,6 @@
 
 pub mod parse;
+pub mod memory;
 
 use std::process;
 
