@@ -97,12 +97,13 @@ SizeType is either:
 - " " - Just bytes
 */
 
-use ParseError::InvalidSectorDefinition;
 
 use crate::util::memory::{MemoryMap, Bank, Sector, Accessibility };
 use crate::util::parse;
 
-pub enum ParseError {
+
+#[derive(PartialEq)]
+pub enum DefParseError {
     InvalidStartChar,
     InvalidBankPartCount,
     AddressParseError,
@@ -111,14 +112,14 @@ pub enum ParseError {
 
 // [@Internal Flash  /0x08000000/04*016Kg,01*064Kg,03*128Kg]
 
-pub fn parse_interface_string(ifstring: &str) -> Result<MemoryMap, ParseError> {
+pub fn parse_memory_layout_string(ifstring: &str) -> Result<MemoryMap, DefParseError> {
     // Split the string by slash
     let mut ifstrparts = ifstring.split('/');
 
     // Get the first part as the name, and return error if it's start char is not correct
-    let namestr = ifstrparts.next().ok_or(ParseError::InvalidBankPartCount)?.trim();
+    let namestr = ifstrparts.next().ok_or(DefParseError::InvalidBankPartCount)?.trim();
     if !namestr.starts_with('@') {
-        return Err(ParseError::InvalidStartChar);
+        return Err(DefParseError::InvalidStartChar);
     }
 
     // Then iterate Banks
@@ -136,12 +137,12 @@ pub fn parse_interface_string(ifstring: &str) -> Result<MemoryMap, ParseError> {
         // Get the base address string
         let base_address_parsed =  parse::usize_from_string(donecheck.unwrap());
         if base_address_parsed.is_err() {
-            return Err(ParseError::AddressParseError)
+            return Err(DefParseError::AddressParseError)
         }
 
         // Parse the base address and sector layout
         let base_address = base_address_parsed.unwrap();
-        let sector_layouts_string = ifstrparts.next().ok_or(ParseError::InvalidBankPartCount)?;
+        let sector_layouts_string = ifstrparts.next().ok_or(DefParseError::InvalidBankPartCount)?;
 
         let mut sector_list: Vec<Sector> = Vec::new();
         let mut sector_address = base_address;
@@ -176,7 +177,7 @@ pub fn parse_interface_string(ifstring: &str) -> Result<MemoryMap, ParseError> {
 // 04*016Kg  01*064Kg  03*128Kg]
 
 /// Parse a layout string into a sector
-fn parse_sector_layout(sector_index: usize, sector_address: usize, layoutstr: &str) -> Result<Sector, ParseError> {
+fn parse_sector_layout(sector_index: usize, sector_address: usize, layoutstr: &str) -> Result<Sector, DefParseError> {
     // The position of descriptor chars
     let dix = layoutstr.len() - 2;
 
@@ -185,24 +186,44 @@ fn parse_sector_layout(sector_index: usize, sector_address: usize, layoutstr: &s
     let def_chars = &layoutstr[dix..];
 
     // Get the block count string and block size strings
-    let block_count_str = layout_parts.next().ok_or(ParseError::InvalidSectorDefinition)?;
-    let block_sizen_str = layout_parts.next().ok_or(ParseError::InvalidSectorDefinition)?;
+    let block_count_str = layout_parts.next().ok_or(DefParseError::InvalidSectorDefinition)?;
+    let block_sizen_str = layout_parts.next().ok_or(DefParseError::InvalidSectorDefinition)?;
 
     // Parse the block count and size
-    let block_count = block_count_str.parse::<usize>().or_else(|_| Err(ParseError::InvalidSectorDefinition))?;
-    let mut block_size = block_sizen_str.parse::<usize>().or_else(|_| Err(ParseError::InvalidSectorDefinition))?;
+    let block_count = block_count_str.parse::<usize>().or_else(|_| Err(DefParseError::InvalidSectorDefinition))?;
+    let mut block_size = block_sizen_str.parse::<usize>().or_else(|_| Err(DefParseError::InvalidSectorDefinition))?;
 
     // Get the size multiplier char, and  parse it
-    let size_multiplier_char = def_chars.chars().nth(0).ok_or(ParseError::InvalidSectorDefinition)?;
+    let size_multiplier_char = def_chars.chars().nth(0).ok_or(DefParseError::InvalidSectorDefinition)?;
     block_size *= match size_multiplier_char {
         'M' => 1024*1024,
         'K' => 1024,
         ' ' => 0,
-        _ => return Err(ParseError::InvalidSectorDefinition)
+        _ => return Err(DefParseError::InvalidSectorDefinition)
     };
 
     // TODO: Figure out what the last char is. I've seen 'g' and 'e', but found no docs to explain it.
 
     // Finally return the sector, and simply assume it's read write erase
     Ok(Sector::new(sector_index, sector_address, block_count, block_size, Accessibility::ReadWriteErase))
+}
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_memory_definition_string() {
+        let defstr = "@Internal Flash  /0x08000000/04*016Kg,01*064Kg,03*128Kg";
+        let memmap_result = parse_memory_layout_string(defstr);
+
+        match memmap_result {
+            Ok(map) => print!("{}", map),
+            Err(_) => assert!(true)
+        }
+        
+
+    }
 }

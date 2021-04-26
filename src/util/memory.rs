@@ -78,8 +78,8 @@ impl<'a> fmt::Display for MemoryMap<'a> {
         write!(f, "Memory Map [{}]:\n", self.name)?;
 
         // Iterate the banks 
-        for bank in self.banks {
-            write!(f, "- {}\n", bank)?;
+        for bank in &self.banks[..] {
+            write!(f, "= {}\n", bank)?;
         }
 
         Ok(())
@@ -116,7 +116,16 @@ impl Bank {
 
 impl fmt::Display for Bank {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "")?;
+        write!(f, "Bank [{}] @ [0x{:08X}]\n", self.index, self.address)?;
+
+        let mut size_total = 0;
+        for sect in &self.sectors[..] {
+            write!(f, " - {}\n", sect)?;
+            size_total += sect.total_size();
+        }
+        
+        write!(f, " => Total size [0x{:X} bytes]", size_total)?;
+
         Ok(())
     }
 }
@@ -162,3 +171,9 @@ impl Sector {
 }
 
 
+impl fmt::Display for Sector {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Sector [{}] @ [0x{:08X}]: Blocks [{} x 0x{:X} bytes]. Access [{:?}]", 
+                    self.index, self.address, self.block_count, self.block_size, self.access)
+    }
+}
