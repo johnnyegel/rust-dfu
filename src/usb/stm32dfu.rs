@@ -102,7 +102,7 @@ use crate::util::memory::{MemoryMap, Bank, Sector, Accessibility };
 use crate::util::parse;
 
 
-#[derive(PartialEq)]
+#[derive(Debug)]
 pub enum DefParseError {
     InvalidStartChar,
     InvalidBankPartCount,
@@ -117,8 +117,8 @@ pub fn parse_memory_layout_string(ifstring: &str) -> Result<MemoryMap, DefParseE
     let mut ifstrparts = ifstring.split('/');
 
     // Get the first part as the name, and return error if it's start char is not correct
-    let namestr = ifstrparts.next().ok_or(DefParseError::InvalidBankPartCount)?.trim();
-    if !namestr.starts_with('@') {
+    let namestr_part = ifstrparts.next().ok_or(DefParseError::InvalidBankPartCount)?;
+    if !namestr_part.starts_with('@') {
         return Err(DefParseError::InvalidStartChar);
     }
 
@@ -170,6 +170,9 @@ pub fn parse_memory_layout_string(ifstring: &str) -> Result<MemoryMap, DefParseE
         bank_index += 1;
     }
 
+    // Get the name string
+    let namestr = namestr_part[1..].trim();
+
     // Return a dummy OK result
     Ok(MemoryMap::new(namestr, bank_list))
 }
@@ -205,9 +208,9 @@ fn parse_sector_layout(sector_index: usize, sector_address: usize, layoutstr: &s
     // TODO: Figure out what the last char is. I've seen 'g' and 'e', but found no docs to explain it.
 
     // Finally return the sector, and simply assume it's read write erase
-    Ok(Sector::new(sector_index, sector_address, block_count, block_size, Accessibility::ReadWriteErase))
+    Ok(Sector::new(sector_index, sector_address, block_count, block_size, Accessibility::READ_WRITE_ERASE))
 }
-
+    
 
 
 #[cfg(test)]
@@ -219,11 +222,45 @@ mod tests {
         let defstr = "@Internal Flash  /0x08000000/04*016Kg,01*064Kg,03*128Kg";
         let memmap_result = parse_memory_layout_string(defstr);
 
-        match memmap_result {
-            Ok(map) => print!("{}", map),
-            Err(_) => assert!(true)
+        if memmap_result.is_err() {
+            print!("Parse failed, which should not happen: {:?}\n", memmap_result.unwrap_err());
+            assert!(true);
+            return;
         }
+        print!("WTF?");
+
+        // Get the memory map
+        let memmap = memmap_result.unwrap();
+        print!("Memory map: {}", memmap);
+
+        // Assert the content of the map
+        assert_eq!("Internal Flash", memmap.name);
+        assert_eq!(1, memmap.banks().len());
+
+        // Borrow a reference to the
+        let bank = &memmap.banks()[0];
+
+        // Check the bank properties
+        assert_eq!(0x8000000, bank.address);
+        assert_eq!(0, bank.index);
+
+        // Get a reference to the sectors
+        let sectors = bank.sectors();
+
+        // Sectors 0-3
+        assert_eq!(0, sectors[0].index);
+        assert_eq!(0x8000000, sectors[0].address);
+        assert_eq!(0x10000, sectors[0].total_size());
         
+        // Sector 4
+        assert_eq!(4, sectors[1].index);
+        assert_eq!(0x8010000, sectors[1].address);
+        assert_eq!(0x10000, sectors[1].total_size());
+
+        // Sectors 5-7
+        assert_eq!(5, sectors[2].index);
+        assert_eq!(0x8020000, sectors[2].address);
+        assert_eq!(0x60000, sectors[2].total_size());
 
     }
 }

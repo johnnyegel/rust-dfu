@@ -8,21 +8,22 @@ bitflags! {
     /// Defines the access types
     pub struct Accessibility: u32 {
         /// Page is readable
-        const Read = 0b0001;
+        const READ = 0b0001;
         /// Page is writable
-        const Write = 0b0010;
+        const WRITE = 0b0010;
         /// Combination of Read and Write
-        const ReadWrite = Self::Read.bits | Self::Write.bits;
+        const READ_WRITE = Self::READ.bits | Self::WRITE.bits;
         /// Erasable (supports block erase)
-        const Erase = 0b0100;
+        const ERASE = 0b0100;
         /// Supports all modes. Typically used to define Flash Memory blocks
-        const ReadWriteErase = Self::ReadWrite.bits | Self::Erase.bits;
+        const READ_WRITE_ERASE = Self::READ_WRITE.bits | Self::ERASE.bits;
     }
 }
 
 
 /// A memory area defines a set of memory banks, which in turn contains 
 /// Banks with sectors consisting of pages
+#[derive(Debug)]
 pub struct MemoryMap<'a> {
     /// The name of the memory map
     pub name: &'a str,
@@ -33,6 +34,7 @@ pub struct MemoryMap<'a> {
 /// A bank is a set of sectors, defined from some base address
 /// The bank also have an index which can be used to define sections
 /// with overlapping address space, but located in different banks.
+#[derive(Debug)]
 pub struct Bank {
     /// The bank index
     pub index: usize,
@@ -43,6 +45,7 @@ pub struct Bank {
 }
 
 /// A sector is a continous section of memory, consisting of several blocks
+#[derive(Debug)]
 pub struct Sector {
     /// The index of the first block in the sector
     pub index: usize,
@@ -69,6 +72,11 @@ impl<'a> MemoryMap<'a> {
             name: name,
             banks: banks
         }
+    }
+
+    /// Provide access to the banks as a slice
+    pub fn banks(&self) -> &[Bank] {
+        &self.banks[..]
     }
 }
 
@@ -110,6 +118,11 @@ impl Bank {
 
         // Create new sector
         Self::new(index, address, sectors)
+    }
+
+    /// Gives access to the sectors via a slice
+    pub fn sectors(&self) -> &[Sector] {
+        &self.sectors[..]
     }
 
 }
@@ -173,7 +186,7 @@ impl Sector {
 
 impl fmt::Display for Sector {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Sector [{}] @ [0x{:08X}]: Blocks [{} x 0x{:X} bytes]. Access [{:?}]", 
-                    self.index, self.address, self.block_count, self.block_size, self.access)
+        write!(f, "Sector [{}] @ [0x{:08X}]: Blocks [{} x 0x{:X} byte], Total [0x{:X} byte]. Access [{:?}]", 
+                    self.index, self.address, self.block_count, self.block_size, self.total_size(), self.access)
     }
 }
