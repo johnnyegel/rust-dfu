@@ -69,6 +69,27 @@ pub struct Sector {
     pub access: Accessibility
 }
 
+
+/// Implement display for accessibility
+impl fmt::Display for Accessibility {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut sep = "";
+        if self.contains(Accessibility::READ) {
+            write!(f, "{} {} ", sep, "READ")?;
+            sep = "|";
+        }
+        if self.contains(Accessibility::WRITE) {
+            write!(f, "{} {} ", sep, "WRITE")?;
+            sep = "|";
+        }
+        if self.contains(Accessibility::ERASE) {
+            write!(f, "{} {} ", sep, "ERASE")?;
+            sep = "|";
+        }
+        Ok(())
+    }
+}
+
 /// Implement a memory map
 impl<'a> MemoryMap<'a> {
 
@@ -192,7 +213,7 @@ impl Sector {
 
 impl fmt::Display for Sector {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Sector [{}] @ [0x{:08X}]: Blocks [{} x 0x{:X} byte], Total [0x{:X} byte]. Access [{:?}]", 
+        write!(f, "Sector [{}] @ [0x{:08X}]: Blocks [{} x 0x{:X} byte], Total [0x{:X} byte]. Access [{}]", 
                     self.index, self.address, self.block_count, self.block_size, self.total_size(), self.access)
     }
 }
