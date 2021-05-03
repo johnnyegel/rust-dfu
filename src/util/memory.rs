@@ -7,6 +7,8 @@ use bitflags::bitflags;
 bitflags! {
     /// Defines the access types
     pub struct Accessibility: u32 {
+        /// Page cannot be accessed in any way (Locked)
+        const NONE = 0;
         /// Page is readable
         const READ = 0b0001;
         /// Page is writable
@@ -15,6 +17,10 @@ bitflags! {
         const READ_WRITE = Self::READ.bits | Self::WRITE.bits;
         /// Erasable (supports block erase)
         const ERASE = 0b0100;
+        /// Readable and erasable
+        const READ_ERASE = Self::READ.bits | Self::ERASE.bits;
+        /// Writable and erasable
+        const WRITE_ERASE = Self::WRITE.bits | Self::ERASE.bits;
         /// Supports all modes. Typically used to define Flash Memory blocks
         const READ_WRITE_ERASE = Self::READ_WRITE.bits | Self::ERASE.bits;
     }
